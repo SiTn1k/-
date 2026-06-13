@@ -4,11 +4,12 @@ import { TapArea } from './components/TapArea';
 import { GeneratorShop } from './components/GeneratorShop';
 import { TapUpgrade } from './components/StatsPanel';
 import { GachaModal } from './components/GachaModal';
+import { ReferralsTab } from './components/ReferralsTab';
 import { EPOCHS, ARTIFACTS } from './data/epochs';
 import { initTelegramMiniApp, hapticImpact, hapticNotification } from './lib/telegram';
-import { Crown, ShoppingBag, Trophy, Gift } from 'lucide-react';
+import { Crown, ShoppingBag, Trophy, Gift, Loader2, Users } from 'lucide-react';
 
-type Tab = 'shop' | 'epochs' | 'artifacts' | 'stats';
+type Tab = 'shop' | 'epochs' | 'artifacts' | 'referrals' | 'stats';
 
 function App() {
   const {
@@ -19,16 +20,23 @@ function App() {
     buyGenerator,
     upgradeTapPower,
     tapPowerCost,
+    addArtifactPart,
+    deductGachaCost,
+    isLoading,
+    telegramId,
+    leaderboard,
+    userRank,
+    leaderboardLoading,
+    loadLeaderboard,
   } = useGame();
 
   const [activeTab, setActiveTab] = useState<Tab>('shop');
   const [showGacha, setShowGacha] = useState(false);
 
-  // Init Telegram Mini App
   useEffect(() => {
     const tg = initTelegramMiniApp();
     if (tg) {
-      console.log('Telegram WebApp initialized', tg.version);
+      console.log('Telegram WebApp initialized', tg.version, 'User:', tg.initDataUnsafe?.user?.id);
     }
   }, []);
 
@@ -63,9 +71,20 @@ function App() {
   const completedArtifacts = state.completedArtifacts?.length || 0;
   const availableArtifacts = ARTIFACTS.filter(a => a.epoch === epoch.id || state.unlockedEpochs.includes(a.epoch));
 
+  if (isLoading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
+        <Loader2 className="w-12 h-12 animate-spin text-yellow-400 mb-4" />
+        <p className="text-lg">Завантаження...</p>
+        {telegramId && (
+          <p className="text-xs text-gray-500 mt-2">Telegram ID: {telegramId}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      {/* Main Tap Area */}
       <TapArea
         epoch={epoch}
         onTap={(x, y) => { tap(x, y); hapticImpact('light'); }}
@@ -79,7 +98,6 @@ function App() {
         currencyIcon={epoch.currencyIcon}
       />
 
-      {/* Bottom Content - Responsive height */}
       <div className="bg-gray-900 border-t border-gray-700 flex flex-col h-[50vh] sm:h-[45vh] md:h-[400px]">
         {/* Tab Bar */}
         <div className="flex border-b border-gray-700 shrink-0">
@@ -104,10 +122,17 @@ function App() {
             badge={completedArtifacts}
           />
           <TabButton
+            active={activeTab === 'referrals'}
+            onClick={() => setActiveTab('referrals')}
+            icon={<Users size={18} />}
+            label="Друзі"
+            badge={state.referralsCount || undefined}
+          />
+          <TabButton
             active={activeTab === 'stats'}
             onClick={() => setActiveTab('stats')}
             icon={<Trophy size={18} />}
-            label="Статистика"
+            label="Стат"
           />
         </div>
 
@@ -168,7 +193,7 @@ function App() {
                 <h3 className="font-bold text-base sm:text-lg">Артефакти</h3>
                 <button
                   onClick={() => setShowGacha(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
                 >
                   Відкрити скриню
                 </button>
@@ -182,10 +207,10 @@ function App() {
                   return (
                     <div
                       key={artifact.id}
-                      className={`p-3 rounded-xl ${
+                      className={`p-3 rounded-xl transition-all ${
                         isComplete
                           ? 'bg-gradient-to-br from-yellow-600/30 to-amber-600/30 border border-yellow-500'
-                          : 'bg-gray-800'
+                          : 'bg-gray-800 hover:bg-gray-700'
                       }`}
                     >
                       <div className="text-2xl sm:text-3xl mb-1">{artifact.icon}</div>
@@ -208,13 +233,27 @@ function App() {
                         </div>
                       )}
                       {isComplete && (
-                        <div className="text-xs text-green-400 mt-1">+{(artifact.bonus.value - 1) * 100}% XP</div>
+                        <div className="text-xs text-green-400 mt-1">+{((artifact.bonus.value - 1) * 100).toFixed(0)}%</div>
                       )}
                     </div>
                   );
                 })}
               </div>
             </div>
+          )}
+
+          {activeTab === 'referrals' && (
+            <ReferralsTab
+              telegramId={telegramId}
+              referralsCount={state.referralsCount}
+              referralEarnings={state.referralEarnings}
+              currency={epoch.currency}
+              currencyIcon={epoch.currencyIcon}
+              leaderboard={leaderboard}
+              userRank={userRank}
+              leaderboardLoading={leaderboardLoading}
+              onLoadLeaderboard={loadLeaderboard}
+            />
           )}
 
           {activeTab === 'stats' && (
@@ -226,7 +265,7 @@ function App() {
                 <StatCard label="Сила тапу" value={state.tapPower + ' XP'} />
                 <StatCard
                   label="Валюта"
-                  value={formatNumber(state.currency)}
+                  value={`${formatNumber(state.currency)} ${epoch.currencyIcon}`}
                 />
                 <StatCard
                   label="Генераторів"
@@ -253,13 +292,12 @@ function App() {
                 </div>
               </div>
 
-              {/* Unlock progress */}
               <div className="bg-gray-800 rounded-xl p-3 sm:p-4">
                 <h4 className="font-semibold mb-2 text-sm sm:text-base">Наступна епоха</h4>
                 {(() => {
                   const nextEpoch = EPOCHS.find(e => e.unlockLevel > state.level);
                   if (!nextEpoch) {
-                    return <div className="text-green-400">Всі епохи відкриті!</div>;
+                    return <div className="text-green-400"> Всі епохи відкриті!</div>;
                   }
                   const levelsLeft = nextEpoch.unlockLevel - state.level;
                   return (
@@ -283,12 +321,16 @@ function App() {
         </div>
       </div>
 
-      {/* Gacha Modal */}
       {showGacha && (
         <GachaModal
           epoch={epoch}
           currency={state.currency}
+          unlockedEpochs={state.unlockedEpochs}
+          artifactParts={state.artifactParts || {}}
+          completedArtifacts={state.completedArtifacts || []}
           onClose={() => setShowGacha(false)}
+          onRoll={(cost) => deductGachaCost(cost)}
+          onArtifactDrop={(artifact, isFull) => addArtifactPart(artifact.id, isFull)}
         />
       )}
     </div>
@@ -310,7 +352,7 @@ function TabButton({
 }) {
   return (
     <button
-      className={`flex-1 py-2 sm:py-3 flex flex-col items-center gap-0.5 sm:gap-1 relative transition-colors touch-manipulation ${
+      className={`flex-1 py-2 flex flex-col items-center gap-0.5 relative transition-colors touch-manipulation ${
         active ? 'text-yellow-400 bg-gray-800/50' : 'text-gray-400'
       }`}
       onClick={onClick}
@@ -323,7 +365,7 @@ function TabButton({
           </span>
         )}
       </div>
-      <span className="text-[10px] sm:text-xs">{label}</span>
+      <span className="text-[10px]">{label}</span>
       {active && <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-yellow-400 rounded-full" />}
     </button>
   );
