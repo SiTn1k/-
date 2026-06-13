@@ -281,25 +281,60 @@ export const EPOCHS: Epoch[] = [
 
 // Artifacts for Gacha
 export const ARTIFACTS: Artifact[] = [
-  // Trypillia
+  // Trypillia (EPOCH 1)
   { id: 'trypillia_bull', name: { ua: 'Бик-бикален', en: 'Bull Idol' }, epoch: 'trypillia', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🐂' },
-  { id: 'trypillia_goddess', name: { ua: 'Богиня-Мати', en: 'Mother Goddess' }, epoch: 'trypillia', rarity: 'legendary', parts: 10, bonus: { type: 'currency_multiplier', value: 2 }, icon: ' goddess' },
+  { id: 'trypillia_pot', name: { ua: 'Трипільська піала', en: 'Trypillian Bowl' }, epoch: 'trypillia', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.15 }, icon: '🏺' },
+  { id: 'trypillia_goddess', name: { ua: 'Богиня-Мати', en: 'Mother Goddess' }, epoch: 'trypillia', rarity: 'legendary', parts: 10, bonus: { type: 'currency_multiplier', value: 1.5 }, icon: '👸' },
 
-  // Scythia
+  // Scythia (EPOCH 2)
+  { id: 'scythia_arrow', name: { ua: 'Скіфська стріла', en: 'Scythian Arrow' }, epoch: 'scythia', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🏹' },
+  { id: 'scythia_rhyton', name: { ua: 'Золотий ритон', en: 'Golden Rhyton' }, epoch: 'scythia', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.2 }, icon: '🎺' },
   { id: 'scythia_gold', name: { ua: 'Золота пектораль', en: 'Golden Pectoral' }, epoch: 'scythia', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 1.5 }, icon: '👑' },
-  { id: 'scythia_rhyton', name: { ua: 'Ритон', en: 'Rhyton' }, epoch: 'scythia', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.2 }, icon: '🏺' },
 
-  // Kyiv Rus
+  // Antiquity (EPOCH 3)
+  { id: 'antiquity_amphora', name: { ua: 'Грецька амфора', en: 'Greek Amphora' }, epoch: 'antiquity', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🏺' },
+  { id: 'antiquity_coin', name: { ua: 'Ольвійська монета', en: 'Olbian Coin' }, epoch: 'antiquity', rarity: 'rare', parts: 7, bonus: { type: 'currency_multiplier', value: 1.2 }, icon: '🪙' },
+  { id: 'antiquity_statue', name: { ua: 'Статуя Аполлона', en: 'Apollo Statue' }, epoch: 'antiquity', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 1.6 }, icon: '🏛' },
+
+  // Kyiv Rus (EPOCH 4)
+  { id: 'kyiv_icon', name: { ua: 'Ікона', en: 'Icon' }, epoch: 'kyiv_rus', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🖼' },
   { id: 'kyiv_reliquary', name: { ua: 'Мощі Святих', en: 'Saints Relics' }, epoch: 'kyiv_rus', rarity: 'epic', parts: 8, bonus: { type: 'xp_multiplier', value: 1.3 }, icon: '☦️' },
   { id: 'kyiv_gospels', name: { ua: 'Остромирове Євангеліє', en: 'Ostromir Gospels' }, epoch: 'kyiv_rus', rarity: 'legendary', parts: 10, bonus: { type: 'currency_multiplier', value: 1.8 }, icon: '📖' },
 
-  // Cossack
-  { id: 'cossack_mace', name: { ua: 'Булава Богдана', en: "Bohdan's Mace" }, epoch: 'cossack', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 2 }, icon: '⚔️' },
-  { id: 'cossack_flag', name: { ua: 'Козацький прапор', en: 'Cossack Banner' }, epoch: 'cossack', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.3 }, icon: '🚩' },
+  // Halych-Volhynia (EPOCH 5)
+  { id: 'halych_crown', name: { ua: 'Корона Данила', en: "Danylo's Crown" }, epoch: 'halych_volhynia', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 1.7 }, icon: '👑' },
+  { id: 'halych_seal', name: { ua: 'Печать князя', en: "Prince's Seal" }, epoch: 'halych_volhynia', rarity: 'rare', parts: 7, bonus: { type: 'currency_multiplier', value: 1.25 }, icon: '🔖' },
 
-  // Independence
-  { id: 'ind_act', name: { ua: 'Акт Незалежности', en: 'Independence Act' }, epoch: 'independence', rarity: 'legendary', parts: 12, bonus: { type: 'xp_multiplier', value: 3 }, icon: '📜' },
-  { id: 'ua_flag', name: { ua: 'Національний прапор', en: 'National Flag' }, epoch: 'independence', rarity: 'common', parts: 5, bonus: { type: 'passive_boost', value: 1.1 }, icon: '🇺🇦' },
+  // Polish-Lithuanian (EPOCH 6)
+  { id: 'polish_sword', name: { ua: 'Рицарський меч', en: 'Knight Sword' }, epoch: 'polish_lithuanian', rarity: 'rare', parts: 7, bonus: { type: 'xp_multiplier', value: 1.2 }, icon: '⚔️' },
+  { id: 'polish_crown', name: { ua: 'Корона короля', en: "King's Crown" }, epoch: 'polish_lithuanian', rarity: 'legendary', parts: 10, bonus: { type: 'passive_boost', value: 1.5 }, icon: '👑' },
+
+  // Cossack (EPOCH 7)
+  { id: 'cossack_pistol', name: { ua: 'Козацький пістоль', en: 'Cossack Pistol' }, epoch: 'cossack', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🔫' },
+  { id: 'cossack_flag', name: { ua: 'Козацький прапор', en: 'Cossack Banner' }, epoch: 'cossack', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.3 }, icon: '🚩' },
+  { id: 'cossack_mace', name: { ua: 'Булава Богдана', en: "Bohdan's Mace" }, epoch: 'cossack', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 2 }, icon: '🏏' },
+
+  // Hetmanate (EPOCH 8)
+  { id: 'hetman_seal', name: { ua: 'Печать гетьмана', en: "Hetman's Seal" }, epoch: 'hetmanate', rarity: 'rare', parts: 7, bonus: { type: 'currency_multiplier', value: 1.3 }, icon: '🔏' },
+  { id: 'hetman_charter', name: { ua: 'Гетьманська грамота', en: 'Hetman Charter' }, epoch: 'hetmanate', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 1.8 }, icon: '📜' },
+
+  // Empire (EPOCH 9)
+  { id: 'empire_medal', name: { ua: 'Імперська медаль', en: 'Imperial Medal' }, epoch: 'empire', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '🏅' },
+  { id: 'empire_factory', name: { ua: 'Заводський знак', en: 'Factory Badge' }, epoch: 'empire', rarity: 'rare', parts: 7, bonus: { type: 'passive_boost', value: 1.25 }, icon: '🏭' },
+
+  // Revolution (EPOCH 10)
+  { id: 'revolution_poster', name: { ua: 'Агітаційний плакат', en: 'Propaganda Poster' }, epoch: 'revolution', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '📰' },
+  { id: 'revolution_flag', name: { ua: 'Прапор УНР', en: 'UNR Flag' }, epoch: 'revolution', rarity: 'legendary', parts: 10, bonus: { type: 'xp_multiplier', value: 1.9 }, icon: '🇺🇦' },
+
+  // Soviet (EPOCH 11)
+  { id: 'soviet_badge', name: { ua: 'Радянський значок', en: 'Soviet Badge' }, epoch: 'soviet', rarity: 'common', parts: 5, bonus: { type: 'xp_multiplier', value: 1.1 }, icon: '⭐' },
+  { id: 'soviet_rocket', name: { ua: 'Модель ракети', en: 'Rocket Model' }, epoch: 'soviet', rarity: 'epic', parts: 8, bonus: { type: 'passive_boost', value: 1.4 }, icon: '🚀' },
+  { id: 'soviet_anthem', name: { ua: 'Ноти гімну УРСР', en: 'USSR Anthem Notes' }, epoch: 'soviet', rarity: 'rare', parts: 7, bonus: { type: 'currency_multiplier', value: 1.35 }, icon: '🎵' },
+
+  // Independence (EPOCH 12)
+  { id: 'ind_passport', name: { ua: 'Перший паспорт', en: 'First Passport' }, epoch: 'independence', rarity: 'rare', parts: 7, bonus: { type: 'xp_multiplier', value: 1.25 }, icon: '🎫' },
+  { id: 'ind_constitution', name: { ua: 'Конституція', en: 'Constitution' }, epoch: 'independence', rarity: 'legendary', parts: 10, bonus: { type: 'passive_boost', value: 1.6 }, icon: '📜' },
+  { id: 'ind_flag', name: { ua: 'Національний прапор', en: 'National Flag' }, epoch: 'independence', rarity: 'common', parts: 5, bonus: { type: 'passive_boost', value: 1.1 }, icon: '🇺🇦' },
 ];
 
 export function getEpochById(id: EpochId): Epoch {
