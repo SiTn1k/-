@@ -58,6 +58,20 @@ export interface GameState {
   // Artifact gacha
   artifactParts: Record<string, number>;
   completedArtifacts: string[];
+  // Referral system
+  referrerId?: number | null;
+  referralsCount: number;
+  referralEarnings: number;
+}
+
+export interface LeaderboardEntry {
+  telegram_id: number;
+  first_name: string | null;
+  username: string | null;
+  level: number;
+  total_xp: number;
+  referrals_count: number;
+  rank: number;
 }
 
 export interface TapEvent {
