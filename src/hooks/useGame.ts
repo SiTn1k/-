@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, EpochId, OwnedGenerator, TapEvent } from '../types/game';
+import { GameState, EpochId, OwnedGenerator, TapEvent, LeaderboardEntry } from '../types/game';
 import {
   EPOCHS,
   getEpochById,
@@ -7,11 +7,18 @@ import {
   getGeneratorCost,
   getGeneratorProduction,
 } from '../data/epochs';
-import { saveGameState, loadGameState } from '../lib/storage';
+import {
+  saveGameState,
+  loadGameState,
+  getTelegramUserId,
+  getLeaderboard,
+  getUserRank,
+  processReferral,
+} from '../lib/storage';
 
 const XP_PER_LEVEL_MULTIPLIER = 1.5;
 const XP_BASE = 100;
-const SAVE_INTERVAL = 5000; // Save every 5 seconds
+const SAVE_INTERVAL = 5000;
 
 function calculateXpToLevel(level: number): number {
   return Math.floor(XP_BASE * Math.pow(XP_PER_LEVEL_MULTIPLIER, level - 1));
@@ -23,7 +30,7 @@ const INITIAL_STATE: GameState = {
   xp: 0,
   xpToNextLevel: calculateXpToLevel(1),
   totalXp: 0,
-  currency: 20, // Start with enough to buy first generator
+  currency: 20,
   totalCurrencyEarned: 20,
   ownedGenerators: [],
   tapPower: 1,
@@ -32,54 +39,27 @@ const INITIAL_STATE: GameState = {
   artifactParts: {},
   completedArtifacts: [],
   lastSavedAt: Date.now(),
+  referrerId: null,
+  referralsCount: 0,
+  referralEarnings: 0,
 };
 
 export function useGame() {
-  const [state, setState] = useState<GameState>(() => {
-    const saved = loadGameState();
-    if (saved) {
-      // Calculate offline progress
-      const now = Date.now();
-      const offlineMs = now - saved.lastSavedAt;
-      const maxOfflineMs = 8 * 60 * 60 * 1000; // 8 hours max
-      const cappedOfflineMs = Math.min(offlineMs, maxOfflineMs);
-      const offlineSeconds = cappedOfflineMs / 1000;
-
-      // Calculate passive income during offline time
-      const passiveXp = saved.ownedGenerators.reduce((total, og) => {
-        const currentEpoch = getCurrentEpochByLevel(saved.level);
-        const epochData = getEpochById(currentEpoch.id);
-        const generator = epochData.generators.find(g => g.id === og.generatorId);
-        if (!generator) return total;
-        return total + getGeneratorProduction(generator, og.level);
-      }, 0);
-
-      const offlineXpGain = passiveXp * offlineSeconds;
-      const offlineCurrencyGain = (saved.level * 10) * (offlineSeconds / 60); // Level * 10 per minute
-
-      return {
-        ...saved,
-        xp: saved.xp + offlineXpGain,
-        totalXp: saved.totalXp + offlineXpGain,
-        currency: saved.currency + offlineCurrencyGain,
-        totalCurrencyEarned: saved.totalCurrencyEarned + offlineCurrencyGain,
-        lastSavedAt: now,
-      };
-    }
-    return INITIAL_STATE;
-  });
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useState<GameState>(INITIAL_STATE);
   const [tapEvents, setTapEvents] = useState<TapEvent[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const tickRef = useRef<number | null>(null);
   const saveRef = useRef<number | null>(null);
+  const isInitialized = useRef(false);
 
-  // Calculate current epoch and passive income
   const currentEpoch = getCurrentEpochByLevel(state.level);
   const epoch = getEpochById(currentEpoch.id);
 
-  // Calculate total passive XP per second
-  const calculatePassiveXp = useCallback((owned: OwnedGenerator[]): number => {
-    const currentEpoch = getCurrentEpochByLevel(state.level);
+  const calculatePassiveXp = useCallback((owned: OwnedGenerator[], level: number): number => {
+    const currentEpoch = getCurrentEpochByLevel(level);
     const epochData = getEpochById(currentEpoch.id);
 
     return owned.reduce((total, og) => {
@@ -87,30 +67,52 @@ export function useGame() {
       if (!generator) return total;
       return total + getGeneratorProduction(generator, og.level);
     }, 0);
-  }, [state.level]);
+  }, []);
+
+  // Load saved state on mount
+  useEffect(() => {
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
+    loadGameState().then(async saved => {
+      if (saved) {
+        // Process referral if this is a new user
+        const processedState = await processReferral(saved);
+        const passiveXp = calculatePassiveXp(processedState.ownedGenerators, processedState.level);
+        setState({
+          ...processedState,
+          passiveXpPerSecond: passiveXp,
+        });
+      }
+      setIsLoading(false);
+    });
+  }, [calculatePassiveXp]);
 
   // Auto-save
   useEffect(() => {
+    if (isLoading) return;
+
     saveRef.current = window.setInterval(() => {
       saveGameState(state);
     }, SAVE_INTERVAL);
 
     return () => {
       if (saveRef.current) clearInterval(saveRef.current);
-      saveGameState(state); // Save on unmount
+      saveGameState(state);
     };
-  }, [state]);
+  }, [state, isLoading]);
 
-  // Game tick - runs every 100ms
+  // Game tick
   useEffect(() => {
+    if (isLoading) return;
+
     tickRef.current = window.setInterval(() => {
       setState(prev => {
-        const passiveXp = calculatePassiveXp(prev.ownedGenerators);
+        const passiveXp = calculatePassiveXp(prev.ownedGenerators, prev.level);
         const newXp = prev.xp + passiveXp / 10;
         const newTotalXp = prev.totalXp + passiveXp / 10;
-        const epoch = getCurrentEpochByLevel(prev.level);
+        const currentEpoch = getCurrentEpochByLevel(prev.level);
 
-        // Check for level up
         let newLevel = prev.level;
         let xp = newXp;
         let xpToNext = prev.xpToNextLevel;
@@ -122,10 +124,9 @@ export function useGame() {
           xp -= xpToNext;
           newLevel++;
           xpToNext = calculateXpToLevel(newLevel);
-          newCurrency += newLevel * 50; // Currency reward for leveling
+          newCurrency += newLevel * 50;
           newTotalCurrency += newLevel * 50;
 
-          // Check for epoch unlocks
           EPOCHS.forEach(e => {
             if (e.unlockLevel === newLevel && !newUnlocked.includes(e.id)) {
               newUnlocked.push(e.id);
@@ -139,7 +140,7 @@ export function useGame() {
           totalXp: newTotalXp,
           level: newLevel,
           xpToNextLevel: xpToNext,
-          epochId: epoch.id,
+          epochId: currentEpoch.id,
           passiveXpPerSecond: passiveXp,
           currency: newCurrency,
           totalCurrencyEarned: newTotalCurrency,
@@ -151,9 +152,8 @@ export function useGame() {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [calculatePassiveXp]);
+  }, [isLoading, calculatePassiveXp]);
 
-  // Tap function
   const tap = useCallback((x: number, y: number) => {
     const eventId = Math.random().toString(36).substr(2, 9);
     const value = state.tapPower;
@@ -174,7 +174,6 @@ export function useGame() {
     }, 1000);
   }, [state.tapPower]);
 
-  // Buy generator
   const buyGenerator = useCallback((generatorId: string) => {
     const generator = epoch.generators.find(g => g.id === generatorId);
     if (!generator) return false;
@@ -193,7 +192,7 @@ export function useGame() {
           )
         : [...prev.ownedGenerators, { generatorId, level: 1 }];
 
-      const newPassiveXp = calculatePassiveXp(newOwned);
+      const newPassiveXp = calculatePassiveXp(newOwned, prev.level);
 
       return {
         ...prev,
@@ -206,7 +205,6 @@ export function useGame() {
     return true;
   }, [epoch.generators, state.currency, state.ownedGenerators, calculatePassiveXp]);
 
-  // Upgrade tap power
   const upgradeTapPower = useCallback(() => {
     const cost = Math.floor(25 * Math.pow(1.8, state.tapPower - 1));
     if (state.currency < cost) return false;
@@ -220,20 +218,65 @@ export function useGame() {
     return true;
   }, [state.currency, state.tapPower]);
 
-  // Switch epoch (if unlocked)
+  const addArtifactPart = useCallback((artifactId: string, isFull: boolean) => {
+    setState(prev => {
+      const newParts = { ...prev.artifactParts };
+      const newCompleted = [...prev.completedArtifacts];
+
+      if (isFull) {
+        if (!newCompleted.includes(artifactId)) {
+          newCompleted.push(artifactId);
+        }
+      } else {
+        newParts[artifactId] = (newParts[artifactId] || 0) + 1;
+      }
+
+      return {
+        ...prev,
+        artifactParts: newParts,
+        completedArtifacts: newCompleted,
+      };
+    });
+  }, []);
+
+  const deductGachaCost = useCallback((cost: number): boolean => {
+    if (state.currency < cost) return false;
+
+    setState(prev => ({
+      ...prev,
+      currency: prev.currency - cost,
+      totalCurrencyEarned: prev.totalCurrencyEarned - cost,
+    }));
+
+    return true;
+  }, [state.currency]);
+
   const switchEpoch = useCallback((epochId: EpochId) => {
     if (!state.unlockedEpochs.includes(epochId)) return;
     setState(prev => ({ ...prev, epochId }));
   }, [state.unlockedEpochs]);
 
-  // Get generator info
   const getOwnedLevel = useCallback((generatorId: string): number => {
     const owned = state.ownedGenerators.find(og => og.generatorId === generatorId);
     return owned?.level || 0;
   }, [state.ownedGenerators]);
 
-  // Calculate tap power upgrade cost
+  // Load leaderboard
+  const loadLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    const data = await getLeaderboard(50);
+    setLeaderboard(data);
+
+    const telegramId = getTelegramUserId();
+    if (telegramId) {
+      const rank = await getUserRank(telegramId);
+      setUserRank(rank);
+    }
+    setLeaderboardLoading(false);
+  }, []);
+
   const tapPowerCost = Math.floor(25 * Math.pow(1.8, state.tapPower - 1));
+  const telegramId = getTelegramUserId();
 
   return {
     state,
@@ -245,5 +288,14 @@ export function useGame() {
     switchEpoch,
     getOwnedLevel,
     tapPowerCost,
+    addArtifactPart,
+    deductGachaCost,
+    isLoading,
+    telegramId,
+    // Referral system
+    leaderboard,
+    userRank,
+    leaderboardLoading,
+    loadLeaderboard,
   };
 }
