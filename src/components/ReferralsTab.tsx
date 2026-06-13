@@ -46,7 +46,7 @@ export function ReferralsTab({
     const tg = getTelegramWebApp();
     if (!telegramId) return;
 
-    const botUsername = 'YourBotUsername';
+    const botUsername = '@test_museum_2026_bot';
     const link = `https://t.me/${botUsername}?start=ref_${telegramId}`;
     const text = `Come play Ukraine Tap Game with me! Explore 12 epochs of Ukrainian history. ${link}`;
 
